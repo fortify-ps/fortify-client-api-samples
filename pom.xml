@@ -70,8 +70,8 @@
 		<dependencies>
 			<dependency> 
 				<groupId>com.fortify.client.api</groupId> 
-				<artifactId>client-api-root</artifactId> 
-				<version>5.0</version> 
+				<artifactId>fortify-client-api</artifactId> 
+				<version>5.4-SNAPSHOT</version> 
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>

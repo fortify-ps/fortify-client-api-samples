@@ -24,6 +24,11 @@
  ******************************************************************************/
 package com.fortify.client.samples;
 
+import java.io.File;
+import java.nio.file.StandardCopyOption;
+
+import javax.ws.rs.HttpMethod;
+
 import com.fortify.client.fod.api.FoDReleaseAPI;
 import com.fortify.client.fod.api.FoDVulnerabilityAPI;
 import com.fortify.client.fod.connection.FoDAuthenticatingRestConnection;
@@ -60,6 +65,10 @@ public class FoDSamples extends AbstractSamples {
 		FoDSamples samples = new FoDSamples(args[0]);
 		samples.sample1QueryReleases();
 		samples.sample2QueryVulnerabilities();
+		for ( int i = 0 ; i < 3 ; i++ ) {
+			// Repeat multiple times to test FoD rate limit handling
+			samples.sample3DownloadFpr();
+		}
 	}
 	
 	public final void sample1QueryReleases() throws Exception {
@@ -96,6 +105,15 @@ public class FoDSamples extends AbstractSamples {
 				print(json.get("traces", JSONList.class));
 			}
 		});
+	}
+	
+	public final void sample3DownloadFpr() throws Exception {
+		printHeader("Download FPR");
+		conn.executeRequestAndSaveResponse(HttpMethod.GET, 
+				conn.getBaseResource().path("/api/v3/releases/"+releaseId+"/fpr")
+					.queryParam("scanType", "static"), 
+				new File("FoD-scan.fpr").toPath(), 
+				StandardCopyOption.REPLACE_EXISTING);
 	}
 
 }
