@@ -26,10 +26,10 @@ package com.fortify.client.samples;
 
 import java.io.File;
 import java.nio.file.StandardCopyOption;
-
-import javax.ws.rs.HttpMethod;
+import java.util.Date;
 
 import com.fortify.client.fod.api.FoDReleaseAPI;
+import com.fortify.client.fod.api.FoDScanAPI;
 import com.fortify.client.fod.api.FoDVulnerabilityAPI;
 import com.fortify.client.fod.connection.FoDAuthenticatingRestConnection;
 import com.fortify.util.rest.json.JSONList;
@@ -63,14 +63,15 @@ public class FoDSamples extends AbstractSamples {
 			throw new IllegalArgumentException("FoD URL in format http(s)://<user>:<password>@host:port/ must be provided as first parameter");
 		}
 		FoDSamples samples = new FoDSamples(args[0]);
-		samples.sample1QueryReleases();
-		samples.sample2QueryVulnerabilities();
+		//samples.sample1QueryReleases();
+		//samples.sample2QueryVulnerabilities();
 		for ( int i = 0 ; i < 3 ; i++ ) {
 			// Repeat multiple times to test FoD rate limit handling
-			samples.sample3DownloadFpr();
+			//samples.sample3DownloadFpr();
 		}
+		samples.sample4QueryScans();
 	}
-	
+
 	public final void sample1QueryReleases() throws Exception {
 		printHeader("Query releases");
 		FoDReleaseAPI api = conn.api(FoDReleaseAPI.class);
@@ -109,11 +110,25 @@ public class FoDSamples extends AbstractSamples {
 	
 	public final void sample3DownloadFpr() throws Exception {
 		printHeader("Download FPR");
-		conn.executeRequestAndSaveResponse(HttpMethod.GET, 
-				conn.getBaseResource().path("/api/v3/releases/"+releaseId+"/fpr")
-					.queryParam("scanType", "static"), 
-				new File("FoD-scan.fpr").toPath(), 
+		conn.api(FoDReleaseAPI.class).saveFPR(
+				releaseId, "static", 
+				new File("FoD-scan.fpr").toPath(),			
 				StandardCopyOption.REPLACE_EXISTING);
+	}
+	
+	public final void sample4QueryScans() throws Exception {
+		printHeader("Query scans");
+		conn.api(FoDScanAPI.class).queryScans()
+			.paramCompletedOnStartDate(new Date(System.currentTimeMillis()-7776000000L))
+			.maxResults(5)
+			.build().processAll(new AbstractJSONMapProcessor() {
+				
+				@Override
+				public void process(JSONMap json) {
+					print("Scan data");
+					print(json);					
+				}
+			});
 	}
 
 }
