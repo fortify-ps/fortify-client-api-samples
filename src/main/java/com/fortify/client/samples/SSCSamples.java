@@ -68,6 +68,7 @@ public class SSCSamples extends AbstractSamples {
 			throw new IllegalArgumentException("Path to FPR file must be provided as second parameter");
 		}
 		SSCSamples samples = new SSCSamples(args[0]);
+		/*
 		samples.sample0CreateApplicationVersion();
 		samples.sample1QueryApplicationVersions();
 		JSONMap artifact = samples.sample2UploadAndQueryArtifacts(args[1]);
@@ -77,8 +78,10 @@ public class SSCSamples extends AbstractSamples {
 		samples.sample6QueryJobs();
 		samples.sample7WaitForJobCreation();
 		samples.sample8QueryMetrics();
+		*/
+		samples.sample9BulkApi();
 	}
-	
+
 	public final void sample0CreateApplicationVersion() throws Exception {
 		printHeader("Create application version");
 		SSCApplicationVersionAPI api = conn.api(SSCApplicationVersionAPI.class);
@@ -172,5 +175,10 @@ public class SSCSamples extends AbstractSamples {
 		print(conn.api(SSCMetricsAPI.class).queryApplicationVersionMetricHistories(applicationVersionId, MetricType.performanceIndicator).useCache(true).build().getAll());
 	}
 	
-
+	private void sample9BulkApi() {
+		printHeader("Bulk API");
+		conn.api(SSCApplicationVersionAPI.class).queryApplicationVersions()
+			.embedSubEntity("attributes", false)
+			.build().processAll(this::print);
+	}
 }

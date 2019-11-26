@@ -27,6 +27,7 @@ package com.fortify.client.samples;
 import java.io.File;
 import java.nio.file.StandardCopyOption;
 import java.util.Date;
+import java.util.UUID;
 
 import com.fortify.client.fod.api.FoDReleaseAPI;
 import com.fortify.client.fod.api.FoDScanAPI;
@@ -49,7 +50,10 @@ public class FoDSamples extends AbstractSamples {
 	
 	
 	public FoDSamples(String baseUrlWithCredentials) {
-		this.conn = FoDAuthenticatingRestConnection.builder().baseUrl(baseUrlWithCredentials).build();
+		this.conn = FoDAuthenticatingRestConnection.builder()
+				.baseUrl(baseUrlWithCredentials)
+				.multiThreaded(true)
+				.build();
 		this.release = conn.api(FoDReleaseAPI.class).getReleaseByNameOrId("WebGoat:5.0", true);
 		if ( this.release == null ) {
 			throw new IllegalStateException("Your FoD instance must have an application 'WebGoat' with release '5.0'");
@@ -65,11 +69,8 @@ public class FoDSamples extends AbstractSamples {
 		FoDSamples samples = new FoDSamples(args[0]);
 		//samples.sample1QueryReleases();
 		//samples.sample2QueryVulnerabilities();
-		for ( int i = 0 ; i < 3 ; i++ ) {
-			// Repeat multiple times to test FoD rate limit handling
-			//samples.sample3DownloadFpr();
-		}
-		samples.sample4QueryScans();
+		samples.sample3DownloadFprMultiThreaded(10);
+		//samples.sample4QueryScans();
 	}
 
 	public final void sample1QueryReleases() throws Exception {
@@ -108,13 +109,38 @@ public class FoDSamples extends AbstractSamples {
 		});
 	}
 	
-	public final void sample3DownloadFpr() throws Exception {
+	public final void sample3DownloadFpr() {
 		printHeader("Download FPR");
+		//String releaseId = "37473";
+		String scanType = "Static";
+		File outputFile = new File(UUID.randomUUID().toString()+".fpr");
+		outputFile.deleteOnExit();
 		conn.api(FoDReleaseAPI.class).saveFPR(
-				releaseId, "static", 
-				new File("FoD-scan.fpr").toPath(),			
+				releaseId, scanType, 
+				outputFile.toPath(),			
 				StandardCopyOption.REPLACE_EXISTING);
 	}
+	
+	public final void sample3DownloadFprRepeat(int count) throws Exception {
+		for ( int i = 0 ; i < count ; i++ ) {
+			// Repeat multiple times to test FoD rate limit handling
+			sample3DownloadFpr();
+		}
+	}
+	
+	public final void sample3DownloadFprMultiThreaded(int nrOfThreads) throws Exception {
+		Thread[] threads = new Thread[nrOfThreads];
+		for ( int i = 0 ; i < nrOfThreads ; i++ ) {
+			threads[i] = new Thread(this::sample3DownloadFpr);
+			threads[i].start();
+		}
+		
+		for ( int i = 0 ; i < nrOfThreads ; i++ ) {
+			threads[i].join();
+		}
+	}
+	
+	
 	
 	public final void sample4QueryScans() throws Exception {
 		printHeader("Query scans");
