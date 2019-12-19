@@ -43,6 +43,24 @@ public abstract class AbstractSamples {
 		print(json==null?"<null>":json.toIndentedString());
 	}
 	
+	protected void resolveOnDemand(JSONMap json) {
+		json.keySet().forEach(key->json.get(key));
+	}
+	
+	protected void resolveOnDemandAndPrint(JSONMap json) {
+		resolveOnDemand(json); print(json);
+	}
+	
+	
+	protected void resolveOnDemand(JSONList json) {
+		json.forEach(obj->resolveOnDemand((JSONMap)obj));
+	}
+	
+	protected void resolveOnDemandAndPrint(JSONList json) {
+		resolveOnDemand(json); print(json);
+	}
+	
+	
 	protected void print(Object obj) {
 		System.out.println(obj==null?"<null>":obj);
 		System.out.flush();

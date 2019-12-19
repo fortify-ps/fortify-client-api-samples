@@ -35,6 +35,7 @@ import com.fortify.client.ssc.api.SSCIssueAPI;
 import com.fortify.client.ssc.api.SSCJobAPI;
 import com.fortify.client.ssc.api.SSCMetricsAPI;
 import com.fortify.client.ssc.api.SSCMetricsAPI.MetricType;
+import com.fortify.client.ssc.api.query.builder.EmbedType;
 import com.fortify.client.ssc.connection.SSCAuthenticatingRestConnection;
 import com.fortify.client.ssc.json.preprocessor.filter.SSCJSONMapFilterApplicationVersionHasAllCustomTags;
 import com.fortify.util.rest.json.JSONList;
@@ -57,29 +58,41 @@ public class SSCSamples extends AbstractSamples {
 	
 	
 	public SSCSamples(String baseUrlWithCredentials) {
-		this.conn = SSCAuthenticatingRestConnection.builder().baseUrl(baseUrlWithCredentials).build();
+		this.conn = SSCAuthenticatingRestConnection.builder().baseUrl(baseUrlWithCredentials).useCache(false).build();
 	}
 
 	public static void main(String[] args) throws Exception {
 		if ( args.length < 1 ) {
 			throw new IllegalArgumentException("SSC URL in format http(s)://<user>:<password>@host:port/ssc must be provided as first parameter");
 		}
+		SSCSamples samples = new SSCSamples(args[0]);
+		
+		samples.sample0CreateApplicationVersion();
+		samples.sample1QueryApplicationVersions();
+		
+		/*
 		if ( args.length < 2 ) {
 			throw new IllegalArgumentException("Path to FPR file must be provided as second parameter");
 		}
-		SSCSamples samples = new SSCSamples(args[0]);
-		/*
-		samples.sample0CreateApplicationVersion();
-		samples.sample1QueryApplicationVersions();
 		JSONMap artifact = samples.sample2UploadAndQueryArtifacts(args[1]);
 		samples.sample3ApproveArtifact(artifact);
 		samples.sample4InvokeAuditAssistant();
 		samples.sample5QueryApplicationVersionIssues();
 		samples.sample6QueryJobs();
 		samples.sample7WaitForJobCreation();
-		samples.sample8QueryMetrics();
 		*/
-		samples.sample9BulkApi();
+		samples.sample8QueryMetrics();
+		
+		timer(samples::sample9QueryApplicationVersionAttributesOnDemand);
+		timer(samples::sample9QueryApplicationVersionAttributesPreloaded);
+		timer(samples::sample10QueryApplicationVersionAttributeValuesByNameOnDemand);
+		timer(samples::sample10QueryApplicationVersionAttributeValuesByNamePreloaded);
+	}
+	
+	private static void timer(Runnable r) {
+		long startTimeMillis = System.currentTimeMillis();
+		try { r.run(); }
+		finally { System.out.println("Elapsed: "+(System.currentTimeMillis()-startTimeMillis)+"ms"); }
 	}
 
 	public final void sample0CreateApplicationVersion() throws Exception {
@@ -154,7 +167,7 @@ public class SSCSamples extends AbstractSamples {
 	}
 	
 	public final void sample6QueryJobs() throws Exception {
-		printHeader("Query jobs ----");
+		printHeader("Query jobs");
 		JSONMap job = conn.api(SSCJobAPI.class).queryJobs().maxResults(1).build().getUnique();
 		print(job);
 	}
@@ -175,10 +188,33 @@ public class SSCSamples extends AbstractSamples {
 		print(conn.api(SSCMetricsAPI.class).queryApplicationVersionMetricHistories(applicationVersionId, MetricType.performanceIndicator).useCache(true).build().getAll());
 	}
 	
-	private void sample9BulkApi() {
-		printHeader("Bulk API");
+	public final void sample9QueryApplicationVersionAttributes(EmbedType embedType) {
+		printHeader("All application versions with attributes "+embedType.name());
 		conn.api(SSCApplicationVersionAPI.class).queryApplicationVersions()
-			.embedSubEntity("attributes", false)
-			.build().processAll(this::print);
+			.embedAttributes(embedType)
+			.build().processAll(this::resolveOnDemandAndPrint);
+	}
+	
+	public final void sample9QueryApplicationVersionAttributesOnDemand() {
+		sample9QueryApplicationVersionAttributes(EmbedType.ONDEMAND);
+	}
+	
+	public final void sample9QueryApplicationVersionAttributesPreloaded() {
+		sample9QueryApplicationVersionAttributes(EmbedType.PRELOAD);
+	}
+	
+	public final void sample10QueryApplicationVersionAttributeValuesByName(EmbedType embedType) {
+		printHeader("All application versions with attribute values by name"+embedType.name());
+		conn.api(SSCApplicationVersionAPI.class).queryApplicationVersions()
+			.embedAttributeValuesByName(embedType)
+			.build().processAll(this::resolveOnDemandAndPrint);
+	}
+	
+	public final void sample10QueryApplicationVersionAttributeValuesByNameOnDemand() {
+		sample10QueryApplicationVersionAttributeValuesByName(EmbedType.ONDEMAND);
+	}
+	
+	public final void sample10QueryApplicationVersionAttributeValuesByNamePreloaded() {
+		sample10QueryApplicationVersionAttributeValuesByName(EmbedType.PRELOAD);
 	}
 }
