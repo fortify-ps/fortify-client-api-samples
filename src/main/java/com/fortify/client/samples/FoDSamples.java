@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (c) Copyright 2017 EntIT Software LLC, a Micro Focus company
+ * (c) Copyright 2020 Micro Focus or one of its affiliates, a Micro Focus company
  *
  * Permission is hereby granted, free of charge, to any person obtaining a 
  * copy of this software and associated documentation files (the 
@@ -67,10 +67,10 @@ public class FoDSamples extends AbstractSamples {
 			throw new IllegalArgumentException("FoD URL in format http(s)://<user>:<password>@host:port/ must be provided as first parameter");
 		}
 		FoDSamples samples = new FoDSamples(args[0]);
-		//samples.sample1QueryReleases();
-		//samples.sample2QueryVulnerabilities();
+		samples.sample1QueryReleases();
+		samples.sample2QueryVulnerabilities();
 		samples.sample3DownloadFprMultiThreaded(10);
-		//samples.sample4QueryScans();
+		samples.sample4QueryScans();
 	}
 
 	public final void sample1QueryReleases() throws Exception {

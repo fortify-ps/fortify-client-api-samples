@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (c) Copyright 2017 EntIT Software LLC, a Micro Focus company
+ * (c) Copyright 2020 Micro Focus or one of its affiliates, a Micro Focus company
  *
  * Permission is hereby granted, free of charge, to any person obtaining a 
  * copy of this software and associated documentation files (the 
@@ -30,6 +30,9 @@ import java.util.UUID;
 
 import com.fortify.client.ssc.api.SSCApplicationVersionAPI;
 import com.fortify.client.ssc.api.SSCArtifactAPI;
+import com.fortify.client.ssc.api.SSCAttributeDefinitionAPI;
+import com.fortify.client.ssc.api.SSCAttributeDefinitionAPI.SSCAttributeDefinitionType;
+import com.fortify.client.ssc.api.SSCAttributeDefinitionAPI.SSCCreateAttributeDefinitionBuilder.SSCAttributeDefinitionOption;
 import com.fortify.client.ssc.api.SSCAuditAssistantAPI;
 import com.fortify.client.ssc.api.SSCIssueAPI;
 import com.fortify.client.ssc.api.SSCJobAPI;
@@ -67,32 +70,37 @@ public class SSCSamples extends AbstractSamples {
 		}
 		SSCSamples samples = new SSCSamples(args[0]);
 		
+		
 		samples.sample0CreateApplicationVersion();
 		samples.sample1QueryApplicationVersions();
 		
-		/*
+		
 		if ( args.length < 2 ) {
 			throw new IllegalArgumentException("Path to FPR file must be provided as second parameter");
 		}
 		JSONMap artifact = samples.sample2UploadAndQueryArtifacts(args[1]);
 		samples.sample3ApproveArtifact(artifact);
-		samples.sample4InvokeAuditAssistant();
+		//samples.sample4InvokeAuditAssistant();
 		samples.sample5QueryApplicationVersionIssues();
 		samples.sample6QueryJobs();
 		samples.sample7WaitForJobCreation();
-		*/
+		
 		samples.sample8QueryMetrics();
 		
-		timer(samples::sample9QueryApplicationVersionAttributesOnDemand);
-		timer(samples::sample9QueryApplicationVersionAttributesPreloaded);
-		timer(samples::sample10QueryApplicationVersionAttributeValuesByNameOnDemand);
-		timer(samples::sample10QueryApplicationVersionAttributeValuesByNamePreloaded);
+		timer("sample9QueryApplicationVersionAttributesOnDemand", samples::sample9QueryApplicationVersionAttributesOnDemand);
+		timer("sample9QueryApplicationVersionAttributesPreloaded", samples::sample9QueryApplicationVersionAttributesPreloaded);
+		timer("sample10QueryApplicationVersionAttributeValuesByNameOnDemand", samples::sample10QueryApplicationVersionAttributeValuesByNameOnDemand);
+		timer("sample10QueryApplicationVersionAttributeValuesByNamePreloaded", samples::sample10QueryApplicationVersionAttributeValuesByNamePreloaded);
+		
+		samples.sample11DeleteApplicationVersion();
+		
+		samples.sample12CreateAttributeDefinitions();
 	}
-	
-	private static void timer(Runnable r) {
+
+	private static void timer(String title, Runnable r) {
 		long startTimeMillis = System.currentTimeMillis();
 		try { r.run(); }
-		finally { System.out.println("Elapsed: "+(System.currentTimeMillis()-startTimeMillis)+"ms"); }
+		finally { System.out.println(title+" - Elapsed: "+(System.currentTimeMillis()-startTimeMillis)+"ms"); }
 	}
 
 	public final void sample0CreateApplicationVersion() throws Exception {
@@ -114,7 +122,7 @@ public class SSCSamples extends AbstractSamples {
 		print("count: "+results.size());
 		
 		printHeader("Get custom tag names for current application version");
-		print(api.queryApplicationVersions().id(applicationVersionId).onDemandCustomTags("customTagNames", "name").build().getUnique().get("customTagNames"));
+		print(api.queryApplicationVersions().id(applicationVersionId).embedCustomTags(EmbedType.ONDEMAND,"customTagNames", "name").build().getUnique().get("customTagNames"));
 		
 		printHeader("Various application version queries to demonstrate caching");
 		for ( int i = 0 ; i < 10 ; i++ ) {
@@ -122,7 +130,7 @@ public class SSCSamples extends AbstractSamples {
 			print(api.queryApplicationVersions().id(applicationVersionId).useCache(true).build().getAll());
 			print(api.queryApplicationVersions().applicationName("WebGoat").versionName("5.0").useCache(true).build().getUnique());
 			print(api.getApplicationVersionByNameOrId("WebGoat:5.0", true));
-			print(api.queryApplicationVersions().useCache(true).onDemandAttributeValuesByName("test")
+			print(api.queryApplicationVersions().useCache(true).embedAttributeValuesByName("test", EmbedType.PRELOAD)
 					.preProcessor(new SSCJSONMapFilterApplicationVersionHasAllCustomTags(MatchMode.INCLUDE, "test")).build().getAll());
 			print(api.queryApplicationVersions().useCache(true).build().getAll());
 		}
@@ -156,7 +164,11 @@ public class SSCSamples extends AbstractSamples {
 	
 	public final void sample5QueryApplicationVersionIssues() throws Exception {
 		printHeader("Query application version issues including on-demand data");
-		JSONList issues = conn.api(SSCIssueAPI.class).queryIssues(applicationVersionId).onDemandDetails().onDemandAuditHistory().onDemandComments().maxResults(1).build().getAll();
+		JSONList issues = conn.api(SSCIssueAPI.class).queryIssues(applicationVersionId)
+				.embedDetails(EmbedType.ONDEMAND)
+				.embedAuditHistory(EmbedType.ONDEMAND)
+				.embedComments(EmbedType.ONDEMAND)
+				.maxResults(1).build().getAll();
 		print(issues);
 		print(issues.asValueType(JSONMap.class).get(0).get("issueDetails"));
 		print(issues);
@@ -216,5 +228,34 @@ public class SSCSamples extends AbstractSamples {
 	
 	public final void sample10QueryApplicationVersionAttributeValuesByNamePreloaded() {
 		sample10QueryApplicationVersionAttributeValuesByName(EmbedType.PRELOAD);
+	}
+	
+	private final void sample11DeleteApplicationVersion() {
+		printHeader("Create & Delete application version");
+		SSCApplicationVersionAPI api = conn.api(SSCApplicationVersionAPI.class);
+		String id = api.createApplicationVersion()
+			.applicationName("SSCSamples").versionName(UUID.randomUUID().toString())
+			.autoAddRequiredAttributes(true).issueTemplateName("Prioritized High Risk Issue Template").execute();
+		JSONMap json = api.getApplicationVersionById(id, false);
+		api.deleteApplicationVersion(json);
+	}
+	
+	public final void sample12CreateAttributeDefinitions() {
+		printHeader("Create attribute definitions");
+		SSCAttributeDefinitionAPI api = conn.api(SSCAttributeDefinitionAPI.class);
+		
+		api.createAttributeDefinition()
+			.name(UUID.randomUUID().toString())
+			.description("SSCSamples Test Attribute")
+			.execute();
+		
+		api.createAttributeDefinition()
+			.name(UUID.randomUUID().toString())
+			.description("SSCSamples Test Attribute")
+			.type(SSCAttributeDefinitionType.SINGLE)
+			.option(new SSCAttributeDefinitionOption("Option 1").description("SSCSamples Test Option 1"))
+			.option(new SSCAttributeDefinitionOption("Option 2").description("SSCSamples Test Option 2").hidden(true))
+			.execute();
+		
 	}
 }
