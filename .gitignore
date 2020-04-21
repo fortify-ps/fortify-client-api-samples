@@ -5,3 +5,4 @@
 *.fpr
 target/
 .gradle/
+.factorypath

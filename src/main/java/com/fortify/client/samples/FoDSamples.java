@@ -54,7 +54,7 @@ public class FoDSamples extends AbstractSamples {
 				.baseUrl(baseUrlWithCredentials)
 				.multiThreaded(true)
 				.build();
-		this.release = conn.api(FoDReleaseAPI.class).getReleaseByNameOrId("WebGoat:5.0", true);
+		this.release = conn.api(FoDReleaseAPI.class).getReleaseByNameOrId("WebGoat:5.0");
 		if ( this.release == null ) {
 			throw new IllegalStateException("Your FoD instance must have an application 'WebGoat' with release '5.0'");
 		}
@@ -81,15 +81,6 @@ public class FoDSamples extends AbstractSamples {
 		JSONList results = api.queryReleases().maxResults(3).paramFields("id").build().getAll();
 		print(results);
 		print("count: "+results.size());
-		
-		printHeader("Various application version queries to demonstrate caching");
-		for ( int i = 0 ; i < 10 ; i++ ) {
-			print(api.queryReleases().applicationName("WebGoat").paramFields("id", "name").useCache(true).build().getAll());
-			print(api.queryReleases().releaseId(releaseId).useCache(true).build().getAll());
-			print(api.queryReleases().applicationName("WebGoat").releaseName("5.0").useCache(true).build().getUnique());
-			print(api.getReleaseByNameOrId("WebGoat:5.0", true));
-			print(api.queryReleases().useCache(true).build().getAll());
-		}
 	}
 	
 	public final void sample2QueryVulnerabilities() throws Exception {

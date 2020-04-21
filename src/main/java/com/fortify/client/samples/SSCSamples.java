@@ -40,7 +40,6 @@ import com.fortify.client.ssc.api.SSCMetricsAPI;
 import com.fortify.client.ssc.api.SSCMetricsAPI.MetricType;
 import com.fortify.client.ssc.api.query.builder.EmbedType;
 import com.fortify.client.ssc.connection.SSCAuthenticatingRestConnection;
-import com.fortify.client.ssc.json.preprocessor.filter.SSCJSONMapFilterApplicationVersionHasAllCustomTags;
 import com.fortify.util.rest.json.JSONList;
 import com.fortify.util.rest.json.JSONMap;
 import com.fortify.util.rest.json.preprocessor.filter.AbstractJSONMapFilter.MatchMode;
@@ -61,7 +60,7 @@ public class SSCSamples extends AbstractSamples {
 	
 	
 	public SSCSamples(String baseUrlWithCredentials) {
-		this.conn = SSCAuthenticatingRestConnection.builder().baseUrl(baseUrlWithCredentials).useCache(false).build();
+		this.conn = SSCAuthenticatingRestConnection.builder().baseUrl(baseUrlWithCredentials).build();
 	}
 
 	public static void main(String[] args) throws Exception {
@@ -109,7 +108,7 @@ public class SSCSamples extends AbstractSamples {
 		this.applicationVersionId = api.createApplicationVersion()
 			.applicationName("SSCSamples").versionName(UUID.randomUUID().toString())
 			.autoAddRequiredAttributes(true).issueTemplateName("Prioritized High Risk Issue Template").execute();
-		this.applicationVersion = api.getApplicationVersionById(applicationVersionId, false);
+		this.applicationVersion = api.getApplicationVersionById(applicationVersionId);
 	}
 	
 	public final void sample1QueryApplicationVersions() throws Exception {
@@ -123,17 +122,6 @@ public class SSCSamples extends AbstractSamples {
 		
 		printHeader("Get custom tag names for current application version");
 		print(api.queryApplicationVersions().id(applicationVersionId).embedCustomTags(EmbedType.ONDEMAND,"customTagNames", "name").build().getUnique().get("customTagNames"));
-		
-		printHeader("Various application version queries to demonstrate caching");
-		for ( int i = 0 ; i < 10 ; i++ ) {
-			print(api.queryApplicationVersions().applicationName("WebGoat").paramFields("id", "name").useCache(true).build().getAll());
-			print(api.queryApplicationVersions().id(applicationVersionId).useCache(true).build().getAll());
-			print(api.queryApplicationVersions().applicationName("WebGoat").versionName("5.0").useCache(true).build().getUnique());
-			print(api.getApplicationVersionByNameOrId("WebGoat:5.0", true));
-			print(api.queryApplicationVersions().useCache(true).embedAttributeValuesByName("test", EmbedType.PRELOAD)
-					.preProcessor(new SSCJSONMapFilterApplicationVersionHasAllCustomTags(MatchMode.INCLUDE, "test")).build().getAll());
-			print(api.queryApplicationVersions().useCache(true).build().getAll());
-		}
 	}
 	
 	public final JSONMap sample2UploadAndQueryArtifacts(String artifactPath) throws Exception {
@@ -141,7 +129,7 @@ public class SSCSamples extends AbstractSamples {
 		String artifactId = conn.api(SSCArtifactAPI.class).uploadArtifactAndWaitProcessingCompletion(applicationVersionId, new File(artifactPath), 60);
 		print(artifactId);
 		if ( artifactId != null ) {
-			JSONMap artifact = conn.api(SSCArtifactAPI.class).getArtifactById(artifactId, true);
+			JSONMap artifact = conn.api(SSCArtifactAPI.class).getArtifactById(artifactId);
 			print(artifact);
 			print(artifact.get("uploadDate", Date.class).getClass().getName());
 			return artifact;
@@ -196,8 +184,8 @@ public class SSCSamples extends AbstractSamples {
 	
 	public final void sample8QueryMetrics() throws Exception {
 		printHeader("Query metrics");
-		print(conn.api(SSCMetricsAPI.class).queryApplicationVersionMetricHistories(applicationVersionId, MetricType.variable).useCache(true).build().getAll());
-		print(conn.api(SSCMetricsAPI.class).queryApplicationVersionMetricHistories(applicationVersionId, MetricType.performanceIndicator).useCache(true).build().getAll());
+		print(conn.api(SSCMetricsAPI.class).queryApplicationVersionMetricHistories(applicationVersionId, MetricType.variable).build().getAll());
+		print(conn.api(SSCMetricsAPI.class).queryApplicationVersionMetricHistories(applicationVersionId, MetricType.performanceIndicator).build().getAll());
 	}
 	
 	public final void sample9QueryApplicationVersionAttributes(EmbedType embedType) {
@@ -218,7 +206,7 @@ public class SSCSamples extends AbstractSamples {
 	public final void sample10QueryApplicationVersionAttributeValuesByName(EmbedType embedType) {
 		printHeader("All application versions with attribute values by name"+embedType.name());
 		conn.api(SSCApplicationVersionAPI.class).queryApplicationVersions()
-			.embedAttributeValuesByName(embedType)
+			.embedAttributeValuesByName(conn.api(SSCAttributeDefinitionAPI.class).getAttributeDefinitionHelper())
 			.build().processAll(this::resolveOnDemandAndPrint);
 	}
 	
@@ -236,7 +224,7 @@ public class SSCSamples extends AbstractSamples {
 		String id = api.createApplicationVersion()
 			.applicationName("SSCSamples").versionName(UUID.randomUUID().toString())
 			.autoAddRequiredAttributes(true).issueTemplateName("Prioritized High Risk Issue Template").execute();
-		JSONMap json = api.getApplicationVersionById(id, false);
+		JSONMap json = api.getApplicationVersionById(id);
 		api.deleteApplicationVersion(json);
 	}
 	
